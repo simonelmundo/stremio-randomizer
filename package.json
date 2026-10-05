@@ -1,0 +1,14 @@
+﻿{
+  "name": "stremio-randomizer",
+  "version": "1.0.1",
+  "description": "Standalone Stremio Randomizer — Cinemeta meta + shuffled season + stream remap",
+  "main": "standalone-server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node standalone-server.js"
+  },
+  "keywords": ["stremio", "addon", "randomizer"],
+  "license": "MIT"
+}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Randomizer</title>
+  <style>
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      font-family: system-ui, sans-serif; background: #12151c; color: #e8eef7;
+    }
+    main { width: min(400px, 92vw); text-align: center; }
+    p { color: #9db0cc; line-height: 1.45; }
+    button {
+      width: 100%; border: 0; border-radius: 10px; padding: 14px;
+      font-size: 1rem; font-weight: 650; cursor: pointer;
+      background: #3ddc97; color: #062416;
+    }
+    button:disabled { opacity: 0.6; }
+    #msg { margin-top: 12px; min-height: 1.2em; color: #7dffa8; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Randomizer</h1>
+    <p>Shuffle # <strong id="seed">__SEED__</strong></p>
+    <button id="btn" type="button">Shuffle again</button>
+    <div id="msg"></div>
+  </main>
+  <script>
+    const btn = document.getElementById("btn");
+    const msg = document.getElementById("msg");
+    const seedEl = document.getElementById("seed");
+    btn.onclick = async () => {
+      btn.disabled = true;
+      msg.textContent = "Shuffling…";
+      try {
+        const r = await fetch("/reroll", { method: "POST" });
+        const j = await r.json();
+        seedEl.textContent = j.seed;
+        msg.textContent = "Done. Reopen the show in Stremio.";
+      } catch (e) {
+        msg.textContent = "Failed: " + e.message;
+      } finally {
+        btn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Randomizer">
+  <path d="M96 50l32 16 32-16" fill="none" stroke="#8B7BB8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="44" y="66" width="168" height="122" rx="20" fill="#2A2440"/>
+  <rect x="58" y="80" width="140" height="94" rx="12" fill="#0E0B14"/>
+
+  <g transform="rotate(-12 128 127)">
+    <rect x="103" y="102" width="50" height="50" rx="11" fill="#E8EDF2"/>
+    <circle cx="115" cy="114" r="5" fill="#0E0B14"/>
+    <circle cx="141" cy="114" r="5" fill="#0E0B14"/>
+    <circle cx="115" cy="140" r="5" fill="#0E0B14"/>
+    <circle cx="141" cy="140" r="5" fill="#0E0B14"/>
+    <text x="126.2" y="127.8" text-anchor="middle" dominant-baseline="central" font-family="Arial Black, Impact, sans-serif" font-size="15" font-weight="800" fill="#FF7A59">R</text>
+  </g>
+
+  <!-- single filled orange arrow (no separate shaft/tip) -->
+  <path fill="#FF7A59" d="
+    M 68 128
+    C 72 108, 86 94, 102 90
+    L 102 82
+    L 120 90
+    L 102 98
+    L 102 93
+    C 88 97, 76 110, 72 128
+    Z"/>
+
+  <!-- single filled blue arrow -->
+  <path fill="#6EC8FF" d="
+    M 188 126
+    C 184 146, 170 160, 154 164
+    L 154 172
+    L 136 164
+    L 154 156
+    L 154 161
+    C 168 157, 180 144, 184 126
+    Z"/>
+
+  <rect x="110" y="188" width="36" height="10" rx="3" fill="#2A2440"/>
+  <rect x="88" y="198" width="80" height="10" rx="3" fill="#2A2440"/>
+</svg>

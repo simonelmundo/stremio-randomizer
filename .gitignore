@@ -1,0 +1,12 @@
+node_modules/
+id-map.json
+seed.json
+config.local.json
+*.log
+
+tools/aio_backup.json
+backup/
+local/
+beamup.json
+docs/logo-options/
+
