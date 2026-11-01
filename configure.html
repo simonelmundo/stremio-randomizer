@@ -11,21 +11,17 @@
     }
     main { width: min(440px, 92vw); text-align: center; }
     p { color: #9db0cc; line-height: 1.45; }
-    a.primary, button {
+    button {
       width: 100%; border: 0; border-radius: 10px; padding: 14px; box-sizing: border-box;
-      font-size: 1rem; font-weight: 650; cursor: pointer; text-decoration: none;
-      display: block;
+      font-size: 1rem; font-weight: 650; cursor: pointer; display: block;
       background: #3ddc97; color: #062416;
-    }
-    a.primary[hidden] { display: none; }
-    button.ghost {
-      background: transparent; color: #e8eef7; border: 1px solid rgba(232,238,247,.18);
-      font-weight: 600; margin-top: 10px;
     }
     button:disabled { opacity: 0.6; cursor: default; }
     #msg { margin-top: 12px; min-height: 1.2em; color: #7dffa8; font-size: 0.9rem; }
     .seed { color: #e8ff47; }
-    .hint { font-size: 0.82rem; color: #6f7f99; margin-top: 14px; }
+    .hint { font-size: 0.82rem; color: #6f7f99; margin-top: 16px; }
+    .warn { color: #ffcf5c; font-size: 0.85rem; margin-top: 12px; }
+    .warn[hidden] { display: none; }
   </style>
 </head>
 <body>
@@ -33,24 +29,26 @@
     <h1>Randomizer</h1>
     <p>Current mix: shuffle <strong class="seed">#<span id="seed">__SEED__</span></strong></p>
     <button id="btn" type="button">Shuffle again</button>
-    <a class="primary" id="install" href="#" hidden>Install shuffle <span id="nextSeed"></span></a>
-    <button class="ghost" id="copy" type="button" hidden>Copy manifest URL</button>
     <div id="msg"></div>
+    <p class="warn" id="pinned" hidden>
+      You are on a pinned mix URL, so reshuffling will not change this address.
+      Install from the plain manifest URL to get in-place shuffles.
+    </p>
     <p class="hint">
-      Each shuffle is a new addon URL, so Stremio cannot keep serving the old list.
-      Installing a new one replaces the previous mix.
+      Shuffling changes the mix in place - nothing to reinstall.
+      Close and reopen the show in Stremio to see the new episodes.
     </p>
   </main>
   <script>
     (function () {
       var base = "__BASE__".replace(/\/$/, "");
+      var pinned = "__PINNED__" === "true";
       var seedEl = document.getElementById("seed");
       var btn = document.getElementById("btn");
-      var install = document.getElementById("install");
-      var nextSeedEl = document.getElementById("nextSeed");
-      var copy = document.getElementById("copy");
       var msg = document.getElementById("msg");
-      var manifestUrl = "";
+      var pinnedNote = document.getElementById("pinned");
+
+      pinnedNote.hidden = !pinned;
 
       btn.onclick = async function () {
         btn.disabled = true;
@@ -58,26 +56,15 @@
         try {
           var r = await fetch(base + "/reroll", { method: "POST" });
           var j = await r.json();
-          if (!j || !j.manifestUrl) throw new Error("no seed returned");
-          manifestUrl = j.manifestUrl;
-          nextSeedEl.textContent = "#" + j.seed;
-          install.href = j.installUrl;
-          install.hidden = false;
-          copy.hidden = false;
-          msg.textContent = "Shuffle #" + j.seed + " ready - install it below.";
+          if (!j || !j.seed) throw new Error("no seed returned");
+          seedEl.textContent = j.seed;
+          msg.textContent = pinned
+            ? "New mix #" + j.seed + ". This URL stays pinned to the old one - reopen the show to see the new mix once you switch to the plain manifest URL."
+            : "New mix #" + j.seed + ". Reopen the show in Stremio.";
         } catch (e) {
           msg.textContent = "Failed: " + e.message;
         } finally {
           btn.disabled = false;
-        }
-      };
-
-      copy.onclick = async function () {
-        try {
-          await navigator.clipboard.writeText(manifestUrl);
-          msg.textContent = "Copied: " + manifestUrl;
-        } catch (e) {
-          msg.textContent = manifestUrl;
         }
       };
     })();

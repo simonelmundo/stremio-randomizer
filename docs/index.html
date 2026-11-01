@@ -73,13 +73,8 @@
       var live = "https://06a6d06388d0-stremio-randomizer.baby-beamup.club";
       var onPages = /github\.io$/i.test(location.hostname);
       var host = onPages ? live : location.origin;
-      // Each install gets its own shuffle number in the URL, so Stremio can never
-      // serve a stale mix from a URL it has already cached.
-      function newSeed() {
-        return Math.floor(Math.random() * 2147483646) + 1;
-      }
-      var seed = newSeed();
-      var manifest = host + "/" + seed + "/manifest.json";
+      // Stable manifest url: reshuffles happen in place, so installing once is enough.
+      var manifest = host + "/manifest.json";
       document.getElementById("install").href = "stremio://" + manifest.replace(/^https?:\/\//i, "");
       document.getElementById("web").href = "https://web.stremio.com/#/addons?addon=" + encodeURIComponent(manifest);
       document.getElementById("configure").href = host + "/configure";

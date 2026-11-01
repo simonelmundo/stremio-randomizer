@@ -1,6 +1,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const http = require("node:http");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 
 const { createApp } = require("../standalone-server.js");
 
@@ -56,7 +59,8 @@ function base(server) {
 }
 
 async function randomizerNames(server, seed) {
-  const r = await fetch(`${base(server)}/${seed}/meta/series/tt0397306.json`);
+  const prefix = seed ? `/${String(seed).replace(/^\//, "")}` : "";
+  const r = await fetch(`${base(server)}${prefix}/meta/series/tt0397306.json`);
   assert.equal(r.status, 200);
   const j = await r.json();
   return j.meta.videos
@@ -131,18 +135,49 @@ test("stream route resolves a shuffled episode back to its original one", async 
   assert.ok(sj.streams[0].behaviorHints.bingeGroup);
 });
 
-test("reroll hands back a new seed and a new install url instead of mutating server state", async (t) => {
+test("reroll reshuffles in place: new seed, same stable manifest url", async (t) => {
   const upstream = await startUpstream();
-  const server = await listen(createApp({ cinemeta: base(upstream) }));
+  const file = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), "randomizer-test-")),
+    "seed.json"
+  );
+  const server = await listen(
+    createApp({ cinemeta: base(upstream), seedFile: file, torrentioBase: "", aiostreamsBase: "" })
+  );
   t.after(() => {
     server.close();
     upstream.close();
   });
 
-  const res = await fetch(`${base(server)}/123/reroll`, { method: "POST" });
+  const before = await randomizerNames(server, "");
+  const res = await fetch(`${base(server)}/reroll`, { method: "POST" });
   assert.equal(res.status, 200);
   const out = await res.json();
   assert.ok(Number.isSafeInteger(out.seed) && out.seed >= 1);
-  assert.match(out.manifestUrl, /\/manifest\.json$/);
-  assert.match(out.installUrl, /^stremio:\/\//);
+  assert.equal(out.manifestUrl, `${base(server)}/manifest.json`);
+
+  const after = await randomizerNames(server, "");
+  const shared = after.filter((n) => before.includes(n)).length;
+  assert.ok(shared < 15, `reshuffle left ${shared}/40 episodes unchanged`);
+});
+
+test("bare urls follow the mutable seed while a numbered url pins its mix", async (t) => {
+  const upstream = await startUpstream();
+  const file = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), "randomizer-test-")),
+    "seed.json"
+  );
+  const server = await listen(
+    createApp({ cinemeta: base(upstream), seedFile: file, torrentioBase: "", aiostreamsBase: "" })
+  );
+  t.after(() => {
+    server.close();
+    upstream.close();
+  });
+
+  const pinnedBefore = await randomizerNames(server, "/777");
+  await fetch(`${base(server)}/reroll`, { method: "POST" });
+  await fetch(`${base(server)}/reroll`, { method: "POST" });
+  const pinnedAfter = await randomizerNames(server, "/777");
+  assert.deepEqual(pinnedBefore, pinnedAfter, "a numbered url must keep its mix across reshuffles");
 });

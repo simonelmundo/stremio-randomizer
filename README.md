@@ -17,19 +17,23 @@ The randomized season is always the very last one — for example, if a show has
 
 ## How reshuffling works
 
-The shuffle number lives **in the addon URL**, not in a server-side file:
+Install once, from the plain manifest url:
 
 ```
-https://06a6d06388d0-stremio-randomizer.baby-beamup.club/1374482917/manifest.json
-                                                      ^^^^^^^^^^ shuffle number
+https://06a6d06388d0-stremio-randomizer.baby-beamup.club/manifest.json
 ```
 
-That is deliberate. Hosting for Stremio addons is serverless and stateless, and Stremio
-caches whatever URL it installed, so a shuffle that only changed server memory would keep
-serving the same 40 episodes. Each `Shuffle again` hands you a new URL, which Stremio treats
-as a new addon configuration - installing it replaces the old mix and no cache can pin it.
+`Shuffle again` in the addon settings swaps the mix **in place** - no reinstall, no second
+addon entry. Close and reopen the show in Stremio and you get a different 40 episodes.
 
-Same URL always gives the same mix. Different number always gives a different 40.
+Two rules make this reliable:
+
+- A mix is never tied to a file that can go missing. The current shuffle number lives in a
+  writable temp path and is **randomised on cold start**, so a host restart can never fall
+  back to one hardcoded mix (that was the old bug: every container restart served seed 1's
+  same 40 episodes).
+- Any shuffle can also be **pinned** by number: `<host>/<shuffle>/manifest.json` always
+  returns that exact mix, so a mix you like can be kept forever.
 
 ## Tests
 

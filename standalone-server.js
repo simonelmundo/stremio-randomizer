@@ -5,14 +5,14 @@ const {
   injectRandomizer,
   resolveOriginalId,
   parseSeed,
-  randomSeed,
 } = require("./lib");
+const { SeedStore } = require("./seed-store");
 
 const PORT = Number(process.env.PORT || 7010);
 const HOST = process.env.HOST || "0.0.0.0";
 const DEFAULT_CINEMETA = "https://v3-cinemeta.strem.io";
 const ADDON_ID = "org.stremio.randomizer.standalone";
-const ADDON_VERSION = "1.2.0";
+const ADDON_VERSION = "1.3.0";
 const LOGO_FALLBACK = "https://simonelmundo.github.io/stremio-randomizer/logo.png";
 
 function loadConfig() {
@@ -40,11 +40,11 @@ function readFile(name) {
 }
 
 // "/12345/meta/series/tt1.json" -> { seed: 12345, route: "/meta/series/tt1.json" }
-// Anything without a leading shuffle number falls back to the default seed.
-function splitSeed(pathname, defaultSeed) {
+// Without a leading number the route follows whatever mix is currently active.
+function splitSeed(pathname) {
   const m = String(pathname).match(/^\/(\d{1,10})(\/.*)?$/);
-  if (!m) return { seed: defaultSeed, route: pathname };
-  const seed = parseSeed(m[1], defaultSeed);
+  if (!m) return { seed: null, route: pathname };
+  const seed = parseSeed(m[1], null);
   const route = m[2] || "/";
   return { seed, route };
 }
@@ -55,11 +55,6 @@ function absoluteBase(req, publicUrl) {
   const proto = String(req.headers["x-forwarded-proto"] || "http").split(",")[0].trim();
   const host = req.headers["x-forwarded-host"] || req.headers.host || `127.0.0.1:${PORT}`;
   return `${proto}://${host}`;
-}
-
-function installUrlFor(base, seed) {
-  const stripped = `${base}/${seed}/manifest.json`;
-  return `stremio://${stripped.replace(/^https?:\/\//i, "")}`;
 }
 
 function createApp(options = {}) {
@@ -76,8 +71,13 @@ function createApp(options = {}) {
     cfg.aiostreamsBase ??
     "";
   const PUBLIC_URL = options.publicUrl || process.env.PUBLIC_URL || "";
-  const DEFAULT_SEED = parseSeed(options.defaultSeed || process.env.DEFAULT_SEED, 1);
   const logoFallback = options.logoFallback || LOGO_FALLBACK;
+  const seedStore =
+    options.seedStore ||
+    new SeedStore({
+      file: options.seedFile || process.env.SEED_PATH || undefined,
+      initial: options.seed,
+    });
 
   let cachedManifest = null;
 
@@ -106,7 +106,7 @@ function createApp(options = {}) {
         version: ADDON_VERSION,
         name: "Randomizer",
         description:
-          "Before install: disable other TV metadata addons (Cinemeta, AIOMetadata, TMDB/Trakt meta, etc.) so this is your only meta source. Uses Cinemeta for TV show metadata. Randomizer streams use built-in default public Torrentio configuration for stream lookup. The shuffle number lives in the addon URL - reshuffle from the addon settings to install a new mix.",
+          "Before install: disable other TV metadata addons (Cinemeta, AIOMetadata, TMDB/Trakt meta, etc.) so this is your only meta source. Uses Cinemeta for TV show metadata. Randomizer streams use built-in default public Torrentio configuration for stream lookup. Reshuffle from the addon settings - the current mix changes in place, no reinstall needed.",
         logo: logoFallback,
         background: upstream.background,
         resources: ["catalog", "meta", "stream"],
@@ -157,8 +157,10 @@ function createApp(options = {}) {
     const qs = (req.url || "").includes("?")
       ? "?" + (req.url || "").split("?").slice(1).join("?")
       : "";
-    const { seed, route: reqPath } = splitSeed(fullPath, DEFAULT_SEED);
+    const { seed: explicitSeed, route: reqPath } = splitSeed(fullPath);
     const base = absoluteBase(req, PUBLIC_URL);
+    // A numbered url pins a mix; a bare one follows the live reshuffle counter.
+    const activeSeed = explicitSeed != null ? explicitSeed : seedStore.current();
 
     try {
       if (reqPath === "/" || reqPath === "/index.html" || reqPath === "/install") {
@@ -184,29 +186,28 @@ function createApp(options = {}) {
       if (reqPath === "/configure" || reqPath === "/configure/") {
         const html = readFile("configure.html")
           .toString("utf8")
-          .replace(/__SEED__/g, String(seed))
-          .replace(/__BASE__/g, base);
+          .replace(/__SEED__/g, String(activeSeed))
+          .replace(/__BASE__/g, base)
+          .replace(/__PINNED__/g, explicitSeed != null ? "true" : "false");
         send(res, 200, html, "text/html; charset=utf-8");
         return;
       }
 
-      // Stateless reshuffle: hand back a fresh seed plus the URLs that select it.
+      // Reshuffle in place: bump the current mix, no reinstall required.
       if (reqPath === "/reroll") {
         if (req.method !== "POST" && req.method !== "GET") {
           send(res, 405, JSON.stringify({ error: "POST or GET" }));
           return;
         }
-        let nextSeed = randomSeed();
-        while (nextSeed === seed) nextSeed = randomSeed();
-        const manifestUrl = `${base}/${nextSeed}/manifest.json`;
+        const nextSeed = seedStore.rotate();
         send(
           res,
           200,
           JSON.stringify({
             ok: true,
             seed: nextSeed,
-            manifestUrl,
-            installUrl: installUrlFor(base, nextSeed),
+            manifestUrl: `${base}/manifest.json`,
+            pinnedManifestUrl: `${base}/${nextSeed}/manifest.json`,
           })
         );
         return;
@@ -233,7 +234,7 @@ function createApp(options = {}) {
           return;
         }
         if (data?.meta && String(metaMatch[1]).toLowerCase() === "series") {
-          data.meta = injectRandomizer(data.meta, seed);
+          data.meta = injectRandomizer(data.meta, activeSeed);
         }
         send(res, 200, JSON.stringify(data));
         return;
