@@ -1,6 +1,4 @@
 node_modules/
-id-map.json
-seed.json
 config.local.json
 *.log
 

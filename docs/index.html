@@ -72,12 +72,17 @@
     (function () {
       var live = "https://06a6d06388d0-stremio-randomizer.baby-beamup.club";
       var onPages = /github\.io$/i.test(location.hostname);
-      var manifest = onPages
-        ? live + "/manifest.json"
-        : location.origin + "/manifest.json";
+      var host = onPages ? live : location.origin;
+      // Each install gets its own shuffle number in the URL, so Stremio can never
+      // serve a stale mix from a URL it has already cached.
+      function newSeed() {
+        return Math.floor(Math.random() * 2147483646) + 1;
+      }
+      var seed = newSeed();
+      var manifest = host + "/" + seed + "/manifest.json";
       document.getElementById("install").href = "stremio://" + manifest.replace(/^https?:\/\//i, "");
       document.getElementById("web").href = "https://web.stremio.com/#/addons?addon=" + encodeURIComponent(manifest);
-      document.getElementById("configure").href = onPages ? live + "/configure" : "/configure";
+      document.getElementById("configure").href = host + "/configure";
       document.getElementById("manifestUrl").textContent = manifest;
       document.getElementById("copy").onclick = async function () {
         var toast = document.getElementById("toast");

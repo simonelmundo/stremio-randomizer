@@ -9,11 +9,33 @@ The randomized season is always the very last one — for example, if a show has
 
 ## What you get
 
-**No more decision fatigue.** Open a show you love, hit play, and let it carry you — no scrolling, no picking, no “what episode tonight?”
+**No more decision fatigue.** Open a show you love, hit play, and let it carry you - no scrolling, no picking, no "what episode tonight?"
 
 - A shuffled season ready whenever you want background comfort or a proper binge
 - Auto plays next episode
 - Reshuffle anytime from the addon settings when you want a fresh mix
+
+## How reshuffling works
+
+The shuffle number lives **in the addon URL**, not in a server-side file:
+
+```
+https://06a6d06388d0-stremio-randomizer.baby-beamup.club/1374482917/manifest.json
+                                                      ^^^^^^^^^^ shuffle number
+```
+
+That is deliberate. Hosting for Stremio addons is serverless and stateless, and Stremio
+caches whatever URL it installed, so a shuffle that only changed server memory would keep
+serving the same 40 episodes. Each `Shuffle again` hands you a new URL, which Stremio treats
+as a new addon configuration - installing it replaces the old mix and no cache can pin it.
+
+Same URL always gives the same mix. Different number always gives a different 40.
+
+## Tests
+
+```bash
+npm test
+```
 
 ## Install
 
